@@ -8,7 +8,7 @@ exports.getDetails = (req, res, next) => {
         name: "Gwachukwu Elebeke",
         github: "@gwachukwu",
         email: "gwachukwuelebeke@gmail.com",
-        mobile: "07030821996",
+        mobile: "+2347030821996",
         twitter: "@gwachi7",
       },
     });

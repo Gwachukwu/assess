@@ -1,19 +1,24 @@
 const joi = require("joi");
-const { evaluate } = require("../utils/eval");
+const { evaluate } = require("../helpers/eval");
 
 exports.validate = (req, res, next) => {
   const { rule, data } = req.body;
 
-  //     //check type of data
-  //  let schema = joi.object();
-  //  let result = schema.validate(req.body);
-  //  if (result.error) {
-  //    return res.status(400).json({
-  //       message: "Invalid JSON payload passed.",
-  //       status: "error",
-  //      data: null,
-  //    });
-  //  }
+  //only an object with 2 keys allowed
+  let schema = joi
+    .object({
+      rule: joi.any(),
+      data: joi.any(),
+    })
+    .max(2);
+  let result = schema.validate(req.body);
+  if (result.error) {
+    return res.status(400).json({
+      message: "Invalid JSON payload passed.",
+      status: "error",
+      data: null,
+    });
+  }
   //if no rule
   if (!rule) {
     return res.status(400).json({
@@ -33,8 +38,8 @@ exports.validate = (req, res, next) => {
   }
 
   //check rule type
-  let schema = joi.object();
-  let result = schema.validate(rule);
+  schema = joi.object();
+  result = schema.validate(rule);
   if (result.error) {
     return res.status(400).json({
       message: "rule should be an object.",
@@ -42,7 +47,7 @@ exports.validate = (req, res, next) => {
       data: null,
     });
   }
-  
+
   //check if rule has all required fields
   if (!rule.field) {
     return res.status(400).json({
@@ -81,8 +86,8 @@ exports.validate = (req, res, next) => {
     // assign data
     let dataFieldValue = data;
     //if array use this rule(because of that last sample response)
-    if(Array.isArray(data)){
-      if(!data.includes(rule["field"])){
+    if (Array.isArray(data)) {
+      if (!data.includes(rule["field"])) {
         return res.status(400).json({
           message: `field ${rule["field"]} is missing from data.`,
           status: "error",
@@ -90,20 +95,42 @@ exports.validate = (req, res, next) => {
         });
       }
     }
-  //if rule.field contains "." e.g mission.count || card.first6
-    if(rule["field"].match(/\./g)){
+
+    //if rule.field contains "." e.g mission.count || card.first6
+    if (rule["field"].match(/\./g)) {
       const arr = rule["field"].match(/\w+(?:'\w+)*/g);
       //since we already know it can't be more than 2 nesting
-       dataFieldValue = data[arr[0]][arr[1]];
-    }
-    //if field is missing in data return error else return data.field
-    
-    if (!dataFieldValue) {
+      //if field is missing in data return error else return data.field
+      if (
+        !data.hasOwnProperty(arr[0]) ||
+        !data[arr[0]].hasOwnProperty(arr[1])
+      ) {
         return res.status(400).json({
           message: `field ${rule["field"]} is missing from data.`,
           status: "error",
           data: null,
         });
+      }
+      //else assign value
+      dataFieldValue = data[arr[0]][arr[1]];
+    }
+
+    //if rule field has no "." and data is an object
+    if (
+      typeof data === "object" &&
+      !Array.isArray(data) &&
+      !rule["field"].match(/\./g)
+    ) {
+      //if it doesn't have the key in rule.field
+      if (!data.hasOwnProperty(rule["field"])) {
+        return res.status(400).json({
+          message: `field ${rule["field"]} is missing from data.`,
+          status: "error",
+          data: null,
+        });
+      }
+      //else
+      dataFieldValue = data[rule["field"]];
     }
 
     //check condition
@@ -126,7 +153,7 @@ exports.validate = (req, res, next) => {
           },
         },
       });
-    }else{
+    } else {
       return res.status(400).json({
         message: `field ${rule["field"]} failed validation.`,
         status: "error",
@@ -142,13 +169,13 @@ exports.validate = (req, res, next) => {
       });
     }
   } catch (error) {
-   //log error
-   console.log(error);
-   //send error message
-   return res.status(500).json({
-     message: "Internal server error",
-     status: "error",
-     data: null,
-   });
- }
+    //log error
+    console.log(error);
+    //send error message
+    return res.status(500).json({
+      message: "Internal server error",
+      status: "error",
+      data: null,
+    });
+  }
 };
